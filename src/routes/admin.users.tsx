@@ -1,10 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card } from "@/components/ui/card";
+import { createAdminUser } from "@/lib/admin-users.functions";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 
@@ -16,6 +22,9 @@ const ROLES: Role[] = ["super_admin", "admin", "delivery"];
 function UsersPage() {
   const qc = useQueryClient();
   const { isSuperAdmin } = useAuth();
+  const createUserFn = useServerFn(createAdminUser);
+
+  const [form, setForm] = useState({ full_name: "", phone: "", password: "", role: "admin" as "admin" | "delivery" });
 
   const { data: profiles = [] } = useQuery({
     queryKey: ["profiles-with-roles"],
@@ -45,19 +54,74 @@ function UsersPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  return (
-    <div>
-      <h1 className="text-2xl font-bold tracking-tight">Roles & Permissions</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {isSuperAdmin ? "Grant or revoke roles for any user." : "Only super admins can change roles."}
-      </p>
+  const create = useMutation({
+    mutationFn: async () => createUserFn({ data: form }),
+    onSuccess: () => {
+      toast.success("User created");
+      setForm({ full_name: "", phone: "", password: "", role: "admin" });
+      qc.invalidateQueries({ queryKey: ["profiles-with-roles"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Failed to create user"),
+  });
 
-      <Card className="mt-6">
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Roles & Permissions</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {isSuperAdmin ? "Create users and manage roles." : "Only super admins can change roles."}
+        </p>
+      </div>
+
+      {isSuperAdmin && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Create user</CardTitle>
+            <CardDescription>Add an admin or delivery account with mobile number + password.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form
+              className="grid gap-3 md:grid-cols-5"
+              onSubmit={(e) => { e.preventDefault(); create.mutate(); }}
+            >
+              <div className="space-y-1.5 md:col-span-1">
+                <Label htmlFor="full_name">Full name</Label>
+                <Input id="full_name" value={form.full_name} required onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
+              </div>
+              <div className="space-y-1.5 md:col-span-1">
+                <Label htmlFor="phone">Mobile (with country code)</Label>
+                <Input id="phone" placeholder="+919876543210" value={form.phone} required onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              </div>
+              <div className="space-y-1.5 md:col-span-1">
+                <Label htmlFor="password">Password</Label>
+                <Input id="password" type="password" minLength={6} value={form.password} required onChange={(e) => setForm({ ...form, password: e.target.value })} />
+              </div>
+              <div className="space-y-1.5 md:col-span-1">
+                <Label>Role</Label>
+                <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v as "admin" | "delivery" })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="delivery">Delivery</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end md:col-span-1">
+                <Button type="submit" className="w-full" disabled={create.isPending}>
+                  {create.isPending ? "Creating…" : "Create user"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>User</TableHead>
-              <TableHead>Email</TableHead>
+              <TableHead>Phone / Email</TableHead>
               <TableHead>Roles</TableHead>
               {isSuperAdmin && <TableHead>Actions</TableHead>}
             </TableRow>
@@ -69,7 +133,7 @@ function UsersPage() {
             {profiles.map((p) => (
               <TableRow key={p.id}>
                 <TableCell className="font-medium">{p.full_name ?? "—"}</TableCell>
-                <TableCell className="text-muted-foreground">{p.email}</TableCell>
+                <TableCell className="text-muted-foreground">{p.phone ?? p.email ?? "—"}</TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1">
                     {p.roles.length === 0 && <span className="text-xs text-muted-foreground">none</span>}
