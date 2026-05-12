@@ -53,7 +53,12 @@ function UsersPage() {
   });
 
   const create = useMutation({
-    mutationFn: async () => createUserFn({ data: form }),
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("create-admin-user", { body: form });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return data;
+    },
     onSuccess: () => {
       toast.success("User created");
       setForm({ full_name: "", phone: "", password: "", role: "admin" });
