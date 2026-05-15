@@ -60,10 +60,12 @@ function Landing() {
       </section>
 
       <section className="mx-auto grid max-w-6xl gap-6 px-6 pb-20 sm:grid-cols-2 lg:grid-cols-3">
-        {features.map(({ icon: Icon, title, description }) => (
+        {features.map(({ icon: Icon, title, description }) => {
+          const to = title === "Delivery Partner List" ? "/delivery-partners" : null;
+          const card = (
           <Card
             key={title}
-            className="group border-border/60 transition-all hover:-translate-y-1 hover:shadow-[0_20px_40px_oklch(0.55_0.2_260/0.15)]"
+            className={`group h-full border-border/60 transition-all hover:-translate-y-1 hover:shadow-[0_20px_40px_oklch(0.55_0.2_260/0.15)] ${to ? "cursor-pointer" : ""}`}
           >
             <CardHeader>
               <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[oklch(0.55_0.2_260)] to-[oklch(0.7_0.2_45)] text-white shadow-md transition-transform group-hover:scale-110">
@@ -75,7 +77,11 @@ function Landing() {
               <CardDescription className="text-sm leading-relaxed">{description}</CardDescription>
             </CardContent>
           </Card>
-        ))}
+          );
+          return to ? (
+            <Link key={title} to={to} className="block">{card}</Link>
+          ) : card;
+        })}
       </section>
     </main>
   );

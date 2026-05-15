@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LandingRouteImport } from './routes/landing'
+import { Route as DeliveryPartnersRouteImport } from './routes/delivery-partners'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
@@ -21,6 +22,11 @@ import { Route as AdminLocationsRouteImport } from './routes/admin.locations'
 const LandingRoute = LandingRouteImport.update({
   id: '/landing',
   path: '/landing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeliveryPartnersRoute = DeliveryPartnersRouteImport.update({
+  id: '/delivery-partners',
+  path: '/delivery-partners',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
+  '/delivery-partners': typeof DeliveryPartnersRoute
   '/landing': typeof LandingRoute
   '/admin/locations': typeof AdminLocationsRoute
   '/admin/staff': typeof AdminStaffRoute
@@ -72,6 +79,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/delivery-partners': typeof DeliveryPartnersRoute
   '/landing': typeof LandingRoute
   '/admin/locations': typeof AdminLocationsRoute
   '/admin/staff': typeof AdminStaffRoute
@@ -83,6 +91,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
+  '/delivery-partners': typeof DeliveryPartnersRoute
   '/landing': typeof LandingRoute
   '/admin/locations': typeof AdminLocationsRoute
   '/admin/staff': typeof AdminStaffRoute
@@ -95,6 +104,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/delivery-partners'
     | '/landing'
     | '/admin/locations'
     | '/admin/staff'
@@ -104,6 +114,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/delivery-partners'
     | '/landing'
     | '/admin/locations'
     | '/admin/staff'
@@ -114,6 +125,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/delivery-partners'
     | '/landing'
     | '/admin/locations'
     | '/admin/staff'
@@ -125,6 +137,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRoute
+  DeliveryPartnersRoute: typeof DeliveryPartnersRoute
   LandingRoute: typeof LandingRoute
 }
 
@@ -135,6 +148,13 @@ declare module '@tanstack/react-router' {
       path: '/landing'
       fullPath: '/landing'
       preLoaderRoute: typeof LandingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/delivery-partners': {
+      id: '/delivery-partners'
+      path: '/delivery-partners'
+      fullPath: '/delivery-partners'
+      preLoaderRoute: typeof DeliveryPartnersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -209,6 +229,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRoute,
+  DeliveryPartnersRoute: DeliveryPartnersRoute,
   LandingRoute: LandingRoute,
 }
 export const routeTree = rootRouteImport
