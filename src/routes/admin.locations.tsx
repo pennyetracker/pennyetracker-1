@@ -71,6 +71,7 @@ function Column({
   selectedId: string | null;
   onSelect: (id: string) => void;
   extraField?: { key: string; label: string; type?: string };
+  bulkAdd?: { parentId: string };
 }) {
   const qc = useQueryClient();
   const [name, setName] = useState("");
