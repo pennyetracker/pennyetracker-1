@@ -64,6 +64,78 @@ export type Database = {
           },
         ]
       }
+      delivery_staff_panchayaths: {
+        Row: {
+          created_at: string
+          id: string
+          panchayath_id: string
+          staff_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          panchayath_id: string
+          staff_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          panchayath_id?: string
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_staff_panchayaths_panchayath_id_fkey"
+            columns: ["panchayath_id"]
+            isOneToOne: false
+            referencedRelation: "panchayaths"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_staff_panchayaths_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_staff_wards: {
+        Row: {
+          created_at: string
+          id: string
+          staff_id: string
+          ward_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          staff_id: string
+          ward_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          staff_id?: string
+          ward_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_staff_wards_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_staff_wards_ward_id_fkey"
+            columns: ["ward_id"]
+            isOneToOne: false
+            referencedRelation: "wards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       districts: {
         Row: {
           created_at: string

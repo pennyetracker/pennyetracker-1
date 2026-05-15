@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -21,8 +22,8 @@ type Staff = {
   phone: string;
   email: string | null;
   status: string;
-  ward_id: string | null;
-  wards?: { name: string; ward_number: string | null; panchayaths: { name: string } } | null;
+  delivery_staff_panchayaths: { panchayath_id: string; panchayaths: { name: string } | null }[];
+  delivery_staff_wards: { ward_id: string; wards: { name: string; ward_number: string | null } | null }[];
 };
 
 function StaffPage() {
@@ -34,7 +35,7 @@ function StaffPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("delivery_staff")
-        .select("*, wards(name, ward_number, panchayaths(name))")
+        .select("*, delivery_staff_panchayaths(panchayath_id, panchayaths(name)), delivery_staff_wards(ward_id, wards(name, ward_number))")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Staff[];
@@ -74,7 +75,7 @@ function StaffPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Delivery Staff</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage your delivery team.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Manage your delivery team and their jurisdictions.</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
@@ -90,8 +91,8 @@ function StaffPage() {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Phone</TableHead>
-              <TableHead>Panchayath</TableHead>
-              <TableHead>Ward</TableHead>
+              <TableHead>Allocated Panchayaths</TableHead>
+              <TableHead>Allocated Wards</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-12" />
             </TableRow>
@@ -105,9 +106,23 @@ function StaffPage() {
               <TableRow key={s.id}>
                 <TableCell className="font-medium">{s.full_name}</TableCell>
                 <TableCell>{s.phone}</TableCell>
-                <TableCell className="text-muted-foreground">{s.wards?.panchayaths?.name ?? "—"}</TableCell>
-                <TableCell className="text-muted-foreground">
-                  {s.wards ? `${s.wards.ward_number ? `Ward ${s.wards.ward_number}` : s.wards.name}` : "—"}
+                <TableCell>
+                  <div className="flex flex-wrap gap-1 max-w-xs">
+                    {s.delivery_staff_panchayaths.length === 0 && <span className="text-muted-foreground">—</span>}
+                    {s.delivery_staff_panchayaths.map((p) => (
+                      <Badge key={p.panchayath_id} variant="outline">{p.panchayaths?.name ?? "—"}</Badge>
+                    ))}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-1 max-w-xs">
+                    {s.delivery_staff_wards.length === 0 && <span className="text-muted-foreground">—</span>}
+                    {s.delivery_staff_wards.map((w) => (
+                      <Badge key={w.ward_id} variant="secondary">
+                        {w.wards?.ward_number ? `Ward ${w.wards.ward_number}` : w.wards?.name ?? "—"}
+                      </Badge>
+                    ))}
+                  </div>
                 </TableCell>
                 <TableCell><Badge variant={s.status === "active" ? "default" : "secondary"}>{s.status}</Badge></TableCell>
                 <TableCell>
@@ -126,26 +141,57 @@ function StaffPage() {
 
 function AddStaffDialog({ panchayaths, wards, onClose }: { panchayaths: any[]; wards: any[]; onClose: () => void }) {
   const qc = useQueryClient();
-  const [form, setForm] = useState({
-    full_name: "", phone: "", email: "", panchayath_id: "", ward_id: "", status: "active",
-  });
+  const [form, setForm] = useState({ full_name: "", phone: "", email: "", status: "active" });
+  const [selectedPanchayaths, setSelectedPanchayaths] = useState<string[]>([]);
+  const [selectedWards, setSelectedWards] = useState<string[]>([]);
 
-  const filteredWards = useMemo(
-    () => wards.filter((w) => w.panchayath_id === form.panchayath_id),
-    [wards, form.panchayath_id],
+  const availableWards = useMemo(
+    () => wards.filter((w) => selectedPanchayaths.includes(w.panchayath_id)),
+    [wards, selectedPanchayaths],
   );
+
+  const togglePanchayath = (id: string) => {
+    setSelectedPanchayaths((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      // drop wards whose panchayath is no longer selected
+      setSelectedWards((w) => w.filter((wid) => {
+        const ward = wards.find((x) => x.id === wid);
+        return ward && next.includes(ward.panchayath_id);
+      }));
+      return next;
+    });
+  };
+
+  const toggleWard = (id: string) => {
+    setSelectedWards((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  };
 
   const create = useMutation({
     mutationFn: async () => {
-      const payload = {
-        full_name: form.full_name,
-        phone: form.phone,
-        email: form.email || null,
-        ward_id: form.ward_id || null,
-        status: form.status,
-      };
-      const { error } = await supabase.from("delivery_staff").insert(payload);
+      const { data: inserted, error } = await supabase
+        .from("delivery_staff")
+        .insert({
+          full_name: form.full_name,
+          phone: form.phone,
+          email: form.email || null,
+          status: form.status,
+        })
+        .select("id")
+        .single();
       if (error) throw error;
+
+      if (selectedPanchayaths.length > 0) {
+        const { error: pErr } = await supabase
+          .from("delivery_staff_panchayaths")
+          .insert(selectedPanchayaths.map((pid) => ({ staff_id: inserted.id, panchayath_id: pid })));
+        if (pErr) throw pErr;
+      }
+      if (selectedWards.length > 0) {
+        const { error: wErr } = await supabase
+          .from("delivery_staff_wards")
+          .insert(selectedWards.map((wid) => ({ staff_id: inserted.id, ward_id: wid })));
+        if (wErr) throw wErr;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["staff"] });
@@ -156,42 +202,58 @@ function AddStaffDialog({ panchayaths, wards, onClose }: { panchayaths: any[]; w
   });
 
   return (
-    <DialogContent>
+    <DialogContent className="max-w-2xl">
       <DialogHeader><DialogTitle>Add delivery staff</DialogTitle></DialogHeader>
       <div className="grid gap-3">
         <Field label="Full name" value={form.full_name} onChange={(v) => setForm({ ...form, full_name: v })} />
         <Field label="Phone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
         <Field label="Email (optional)" value={form.email} onChange={(v) => setForm({ ...form, email: v })} />
-        <div className="space-y-1.5">
-          <Label>Panchayath</Label>
-          <Select value={form.panchayath_id} onValueChange={(v) => setForm({ ...form, panchayath_id: v, ward_id: "" })}>
-            <SelectTrigger><SelectValue placeholder="Select panchayath" /></SelectTrigger>
-            <SelectContent>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label>Allocated Panchayaths</Label>
+            <ScrollArea className="h-48 rounded-md border p-2">
+              {panchayaths.length === 0 && <p className="text-sm text-muted-foreground">No panchayaths yet.</p>}
               {panchayaths.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name} {p.districts?.name ? `(${p.districts.name})` : ""}
-                </SelectItem>
+                <label key={p.id} className="flex items-center gap-2 py-1 text-sm cursor-pointer">
+                  <Checkbox
+                    checked={selectedPanchayaths.includes(p.id)}
+                    onCheckedChange={() => togglePanchayath(p.id)}
+                  />
+                  <span>{p.name} {p.districts?.name ? <span className="text-muted-foreground">({p.districts.name})</span> : null}</span>
+                </label>
               ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Ward</Label>
-          <Select value={form.ward_id} onValueChange={(v) => setForm({ ...form, ward_id: v })} disabled={!form.panchayath_id}>
-            <SelectTrigger><SelectValue placeholder={form.panchayath_id ? "Select ward" : "Select panchayath first"} /></SelectTrigger>
-            <SelectContent>
-              {filteredWards.map((w) => (
-                <SelectItem key={w.id} value={w.id}>
-                  {w.ward_number ? `Ward ${w.ward_number}` : w.name}
-                </SelectItem>
+            </ScrollArea>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Allocated Wards</Label>
+            <ScrollArea className="h-48 rounded-md border p-2">
+              {selectedPanchayaths.length === 0 && (
+                <p className="text-sm text-muted-foreground">Select panchayaths first.</p>
+              )}
+              {selectedPanchayaths.length > 0 && availableWards.length === 0 && (
+                <p className="text-sm text-muted-foreground">No wards in selected panchayaths.</p>
+              )}
+              {availableWards.map((w) => (
+                <label key={w.id} className="flex items-center gap-2 py-1 text-sm cursor-pointer">
+                  <Checkbox
+                    checked={selectedWards.includes(w.id)}
+                    onCheckedChange={() => toggleWard(w.id)}
+                  />
+                  <span>{w.ward_number ? `Ward ${w.ward_number}` : w.name}</span>
+                </label>
               ))}
-            </SelectContent>
-          </Select>
+            </ScrollArea>
+          </div>
         </div>
       </div>
       <DialogFooter>
         <Button variant="outline" onClick={onClose}>Cancel</Button>
-        <Button onClick={() => create.mutate()} disabled={!form.full_name || !form.phone || !form.ward_id || create.isPending}>
+        <Button
+          onClick={() => create.mutate()}
+          disabled={!form.full_name || !form.phone || selectedPanchayaths.length === 0 || create.isPending}
+        >
           {create.isPending ? "Saving…" : "Save"}
         </Button>
       </DialogFooter>
