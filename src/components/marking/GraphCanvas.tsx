@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ReactFlow,
   Background,
@@ -105,7 +105,7 @@ export function GraphCanvas({ cfg }: { cfg: GraphConfig }) {
   const [dialog, setDialog] = useState<{ kind: "add" | "connect" | "create"; dir?: Direction } | null>(null);
 
   // All nodes (for search and existing selection), optionally scoped to a parent
-  const { data: allNodes = [] } = useQuery({
+  const { data: allNodes = [], isLoading: nodesLoading, error: nodesError } = useQuery({
     queryKey: [cfg.nodesTable, "all", cfg.parentFilter?.column, cfg.parentFilter?.value],
     queryFn: async () => {
       let q = supabase.from(cfg.nodesTable).select("*").order("name");
@@ -115,6 +115,10 @@ export function GraphCanvas({ cfg }: { cfg: GraphConfig }) {
       return data as any[];
     },
   });
+
+  useEffect(() => {
+    if (nodesError) toast.error(`Failed to load ${cfg.label.toLowerCase()}s: ${(nodesError as Error).message}`);
+  }, [nodesError, cfg.label]);
 
   // Connections from current center
   const { data: connections = [] } = useQuery({
@@ -299,9 +303,21 @@ export function GraphCanvas({ cfg }: { cfg: GraphConfig }) {
           <div className="flex h-full items-center justify-center p-6 text-center">
             <div>
               <MapPin className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
-              <p className="text-sm text-muted-foreground">
-                Search above or create a new {cfg.label.toLowerCase()} to begin marking.
-              </p>
+              {nodesError ? (
+                <p className="text-sm text-destructive">
+                  Couldn't load {cfg.label.toLowerCase()}s: {(nodesError as Error).message}
+                </p>
+              ) : nodesLoading ? (
+                <p className="text-sm text-muted-foreground">Loading {cfg.label.toLowerCase()}s…</p>
+              ) : allNodes.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No {cfg.label.toLowerCase()}s yet. Create one to begin marking.
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Search above or create a new {cfg.label.toLowerCase()} to begin marking.
+                </p>
+              )}
             </div>
           </div>
         ) : (
