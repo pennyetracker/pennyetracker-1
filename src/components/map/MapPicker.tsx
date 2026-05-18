@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { MapPin, Locate, Save, X, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useGoogleMaps } from "./useGoogleMaps";
+import { FallbackPicker } from "./FallbackPicker";
 import { loadCachedPoints, saveCachedPoints, upsertCachedPoint, type GeoPoint } from "@/lib/geoCache";
 
 type Kind = "panchayath" | "ward";
