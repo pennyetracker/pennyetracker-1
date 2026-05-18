@@ -134,13 +134,38 @@ function PublicPanchayathMap() {
           </span>
         </div>
 
-        {!apiKey ? (
+        {!apiKey || mapState === "error" ? (
           <Card>
-            <CardContent className="py-10 text-center">
-              <MapPin className="mx-auto h-10 w-10 text-muted-foreground" />
-              <p className="mt-3 text-sm text-muted-foreground">
-                Map is not configured yet. Ask an admin to set the Google Maps API key.
-              </p>
+            <CardContent className="p-4">
+              <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
+                {!apiKey
+                  ? "Map provider unavailable. Showing marked locations as a list with map links."
+                  : "Google Maps failed to load. Showing marked locations as a list with map links."}
+              </div>
+              {visible.length === 0 ? (
+                <div className="py-10 text-center text-sm text-muted-foreground">
+                  No panchayath locations have been marked yet.
+                </div>
+              ) : (
+                <ul className="divide-y">
+                  {visible.map((p) => (
+                    <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                      <div>
+                        <div className="text-sm font-medium">{p.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {p.lat?.toFixed(6)}, {p.lng?.toFixed(6)}
+                        </div>
+                      </div>
+                      <div className="flex gap-3 text-xs">
+                        <a className="text-primary hover:underline" target="_blank" rel="noreferrer"
+                          href={`https://www.google.com/maps?q=${p.lat},${p.lng}`}>Google Maps</a>
+                        <a className="text-primary hover:underline" target="_blank" rel="noreferrer"
+                          href={`https://www.openstreetmap.org/?mlat=${p.lat}&mlon=${p.lng}#map=15/${p.lat}/${p.lng}`}>OpenStreetMap</a>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </CardContent>
           </Card>
         ) : (
@@ -149,11 +174,6 @@ function PublicPanchayathMap() {
               {mapState === "loading" && (
                 <div className="flex h-[70vh] items-center justify-center text-sm text-muted-foreground">
                   Loading map…
-                </div>
-              )}
-              {mapState === "error" && (
-                <div className="flex h-[70vh] items-center justify-center px-6 text-center text-sm text-destructive">
-                  Failed to load Google Maps. Check that the API key is valid and that the Maps JavaScript API is enabled.
                 </div>
               )}
               <div

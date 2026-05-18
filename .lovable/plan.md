@@ -1,35 +1,41 @@
 ## Goal
 
-On the `/landing` page, add a new feature card that opens a public, read-only Google Map showing all panchayaths that already have a saved location.
-
-Today, marked locations only exist behind the admin pages (`/admin/mapping/panchayath`). This makes them visible to any visitor.
+When Google Maps fails to load (invalid key, API not enabled, network blocked, quota exceeded), fall back to a browser-native picker so users can still mark/save locations and view existing ones. Today both `/admin/mapping/panchayath`, `/admin/mapping/ward`, and `/map/panchayath` show only "Oops! Something went wrong" or "Failed to load Google Maps".
 
 ## Changes
 
-### 1. New public route: `src/routes/map.panchayath.tsx`
-- Path: `/map/panchayath`
-- Loads the Google Maps API key from `app_settings` via the existing `useGoogleMapsKey` hook.
-- Queries `panchayaths` (id, name, district_id, latitude, longitude) where `latitude` and `longitude` are not null.
-- Renders a full-height Google Map with one marker per panchayath. Marker tooltip = panchayath name. Map auto-fits bounds to all markers; falls back to Kerala default if none.
-- Read-only: no click-to-place, no edit controls, no auth required.
-- Uses the same `useGoogleMaps` loader hook as the admin picker.
-- Hydrates instantly from the IndexedDB cache (`loadCachedPoints("panchayath")`) on mount, then refreshes from Supabase.
-- Empty state: "No panchayath locations have been marked yet."
-- Missing key state: "Map is not configured yet. Ask an admin to set the Google Maps API key."
+### 1. New component: `src/components/map/FallbackPicker.tsx`
+A no-Google-Maps picker that supports the same save flow as `MapPicker`:
+- Header: "Map provider unavailable — using browser GPS fallback" notice.
+- **Get my location** button → `navigator.geolocation.getCurrentPosition` (high-accuracy, 10s timeout). On success, sets a draft `{lat, lng}`.
+- **Manual entry**: two number inputs for latitude/longitude with validation (-90..90 / -180..180).
+- **Marked list** for the selected parent: shows each item with lat/lng (or "—"), an "Open in Google Maps" link (`https://www.google.com/maps?q=lat,lng`) and "Open in OSM" link as a true fallback view.
+- **Save / Cancel** buttons reuse the same Supabase update + IndexedDB cache write as `MapPicker`.
+- Same left column (parent select, search, item list) as `MapPicker` so the UX is consistent.
 
-### 2. New card on `/landing`
-- Add a 5th card titled **"Panchayath Map"** to the `features` array in `src/routes/landing.tsx`.
-- Icon: `Map` (lucide-react).
-- Links to `/map/panchayath`.
-- Reuses an existing gradient style for visual consistency.
+### 2. Wire fallback into `src/components/map/MapPicker.tsx`
+- When `mapState === "error"` OR `!apiKey`, render `<FallbackPicker .../>` instead of the current error/empty card. Keep a small dismissable banner explaining why ("Google Maps unavailable — using browser GPS").
+- Extract the save mutation and parent/list rendering into shared hooks/helpers so both components stay in sync (or pass them down as props — whichever is smaller).
 
-## Notes
+### 3. Public viewer fallback: `src/routes/map.panchayath.tsx`
+- When `mapState === "error"` or `apiKey` is missing, render a list view of all marked panchayaths grouped by district, each with:
+  - Name + coords
+  - "Open in Google Maps" / "Open in OpenStreetMap" deep links
+  - "Show on browser map" → opens an OSM static image (`https://staticmap.openstreetmap.de/staticmap.php?...`) for a lightweight visual.
+- Keep the existing Google Map render when it works.
 
-- No DB changes; reuses existing `panchayaths.latitude/longitude` columns and `app_settings.google_maps_api_key`.
-- Public RLS on `panchayaths` is `authenticated`-only today. If we want this map fully public (no login), we'll need to either (a) add a public SELECT policy filtered to rows with non-null lat/lng, or (b) expose the data through a `SECURITY DEFINER` SQL function similar to `get_public_delivery_partners`. **Assumption: option (a)** — add a permissive public read policy limited to marked rows. Tell me if you'd rather keep it auth-only and I'll skip that migration.
-- Google Maps key is read from `app_settings` (admin-only RLS). For an unauthenticated viewer we'd need a small change: a public `get_public_google_maps_key()` SQL function, or move the key to an `import.meta.env.VITE_*` value. **Assumption: add a `SECURITY DEFINER` function** that returns just that one key so the public viewer page can load the map. Tell me if you'd prefer the env-var route or want to keep the map admin-only.
+### 4. Loader resilience: `src/components/map/useGoogleMaps.ts`
+- Add a 10s timeout: if the script tag never fires `load` or `error`, force `state = "error"` so the fallback engages instead of spinning forever.
+- Reset the cached `scriptPromise` on error so a later valid key can retry.
 
 ## Out of scope
+- Routing/turn-by-turn navigation (the current app doesn't use Google Directions; "navigation" here = map view + GPS pin).
+- Swapping Google Maps for an OSS map library (Leaflet/MapLibre) — can be a follow-up if you want a real interactive fallback map instead of links + static image.
 
-- Ward map viewer (can be added the same way later).
-- Clustering, search, polygons, directions.
+## Technical notes
+- No DB schema changes. Reuses `panchayaths.latitude/longitude`, `wards.latitude/longitude`, `app_settings.google_maps_api_key`, and the existing `get_public_google_maps_key` RPC.
+- All browser-GPS code runs only in event handlers (no SSR concerns).
+- The "Use my location" button already exists inside `MapPicker`; the fallback path simply makes it usable even when Google Maps never loaded.
+
+## Open question
+Do you want a real interactive offline map (Leaflet + OpenStreetMap tiles, ~40KB) as the fallback instead of the link/static-image approach? It's a bigger change but gives proper pan/zoom without any Google dependency. Reply "use leaflet" if yes.

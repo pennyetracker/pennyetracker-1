@@ -10,12 +10,31 @@ function loadScript(apiKey: string): Promise<void> {
   loadedKey = apiKey;
   scriptPromise = new Promise((resolve, reject) => {
     if (typeof window === "undefined") return reject(new Error("SSR"));
-    // If already present, resolve immediately
-    if ((window as any).google?.maps) return resolve();
+    // Capture and detect Google Maps auth/runtime failures (invalid key, billing, etc.)
+    (window as any).gm_authFailure = () => {
+      scriptPromise = null;
+      loadedKey = null;
+      reject(new Error("Google Maps auth failure"));
+    };
+    const timeout = setTimeout(() => {
+      scriptPromise = null;
+      loadedKey = null;
+      reject(new Error("Google Maps load timeout"));
+    }, 10_000);
+    const done = (ok: boolean, err?: Error) => {
+      clearTimeout(timeout);
+      if (ok) resolve();
+      else {
+        scriptPromise = null;
+        loadedKey = null;
+        reject(err ?? new Error("Failed to load Google Maps"));
+      }
+    };
+    if ((window as any).google?.maps) return done(true);
     const existing = document.getElementById("google-maps-js") as HTMLScriptElement | null;
     if (existing) {
-      existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener("error", () => reject(new Error("Failed to load Google Maps")), { once: true });
+      existing.addEventListener("load", () => done(true), { once: true });
+      existing.addEventListener("error", () => done(false), { once: true });
       return;
     }
     const s = document.createElement("script");
@@ -23,8 +42,8 @@ function loadScript(apiKey: string): Promise<void> {
     s.async = true;
     s.defer = true;
     s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=marker`;
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error("Failed to load Google Maps"));
+    s.onload = () => done(true);
+    s.onerror = () => done(false);
     document.head.appendChild(s);
   });
   return scriptPromise;
