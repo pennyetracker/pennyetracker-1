@@ -52,17 +52,37 @@ function WardMap() {
           />
         </TabsContent>
         <TabsContent value="neighbours" className="mt-4">
-          <GraphCanvas
-            cfg={{
-              label: "Ward",
-              nodesTable: "wards",
-              edgesTable: "ward_connections",
-              srcCol: "source_ward_id",
-              tgtCol: "target_ward_id",
-              parentRef: { key: "panchayath_id", label: "Panchayath", table: "panchayaths" },
-              subtitle: (n) => (n.ward_number ? `Ward #${n.ward_number}` : null),
-            }}
-          />
+          <div className="mb-3 flex items-center gap-2">
+            <label className="text-sm text-muted-foreground">Panchayath:</label>
+            <select
+              value={panchayathId ?? ""}
+              onChange={(e) => setPanchayathId(e.target.value || null)}
+              className="h-9 min-w-[220px] rounded-md border border-input bg-transparent px-3 text-sm"
+            >
+              <option value="">Select panchayath...</option>
+              {panchayaths.map((p: any) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          {panchayathId ? (
+            <GraphCanvas
+              cfg={{
+                label: "Ward",
+                nodesTable: "wards",
+                edgesTable: "ward_connections",
+                srcCol: "source_ward_id",
+                tgtCol: "target_ward_id",
+                parentRef: { key: "panchayath_id", label: "Panchayath", table: "panchayaths" },
+                subtitle: (n) => (n.ward_number ? `Ward #${n.ward_number}` : null),
+                filter: { key: "panchayath_id", value: panchayathId },
+              }}
+            />
+          ) : (
+            <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
+              Select a panchayath above to start marking ward neighbours.
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>
