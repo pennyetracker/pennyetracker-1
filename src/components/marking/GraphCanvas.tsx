@@ -237,7 +237,7 @@ export function GraphCanvas({ cfg }: { cfg: GraphConfig }) {
           style: { stroke: "hsl(var(--primary))", strokeWidth: 2 },
           labelStyle: { fontSize: 10, textTransform: "uppercase", fontWeight: 600 },
         });
-      } else {
+      } else if (!cfg.readOnly) {
         ns.push({
           id: `ph-${dir}`,
           type: "placeholder",
