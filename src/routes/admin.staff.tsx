@@ -1,8 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, useEffect } from "react";
-import { useServerFn } from "@tanstack/react-start";
-import { listPendingStaff, approveStaff, rejectStaff } from "@/lib/staff-approval.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,17 +33,25 @@ function StaffPage() {
   const [editing, setEditing] = useState<Staff | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
-  const listPending = useServerFn(listPendingStaff);
-  const approveFn = useServerFn(approveStaff);
-  const rejectFn = useServerFn(rejectStaff);
+  type PendingStaff = { id: string; full_name: string; phone: string; created_at: string; panchayaths: string[]; wards: string[] };
+  const callApproval = async (body: any) => {
+    const { data, error } = await supabase.functions.invoke("staff-approval", { body });
+    if (error) throw new Error(error.message);
+    if (data?.error) throw new Error(data.error);
+    return data;
+  };
 
   const { data: pending = [], isLoading: pendingLoading } = useQuery({
     queryKey: ["staff-pending"],
-    queryFn: () => listPending(),
+    queryFn: async (): Promise<PendingStaff[]> => {
+      const data = await callApproval({ action: "list" });
+      return data.pending ?? [];
+    },
   });
 
   const approve = useMutation({
-    mutationFn: (vars: { staff_id: string; role: "admin" | "delivery" }) => approveFn({ data: vars }),
+    mutationFn: (vars: { staff_id: string; role: "admin" | "delivery" }) =>
+      callApproval({ action: "approve", ...vars }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["staff-pending"] });
       qc.invalidateQueries({ queryKey: ["staff"] });
@@ -55,7 +61,7 @@ function StaffPage() {
   });
 
   const reject = useMutation({
-    mutationFn: (staff_id: string) => rejectFn({ data: { staff_id } }),
+    mutationFn: (staff_id: string) => callApproval({ action: "reject", staff_id }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["staff-pending"] });
       qc.invalidateQueries({ queryKey: ["staff"] });
