@@ -38,14 +38,99 @@ export type Database = {
         }
         Relationships: []
       }
+      cash_submissions: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          notes: string | null
+          staff_id: string
+          submitted_at: string
+          updated_at: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          staff_id: string
+          submitted_at?: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          staff_id?: string
+          submitted_at?: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: []
+      }
+      delivery_orders: {
+        Row: {
+          address: string | null
+          amount: number
+          cash_submission_id: string | null
+          created_at: string
+          customer_name: string
+          customer_phone: string | null
+          delivered_at: string | null
+          id: string
+          order_number: string
+          staff_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          amount?: number
+          cash_submission_id?: string | null
+          created_at?: string
+          customer_name: string
+          customer_phone?: string | null
+          delivered_at?: string | null
+          id?: string
+          order_number: string
+          staff_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          amount?: number
+          cash_submission_id?: string | null
+          created_at?: string
+          customer_name?: string
+          customer_phone?: string | null
+          delivered_at?: string | null
+          id?: string
+          order_number?: string
+          staff_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       delivery_staff: {
         Row: {
+          address: string | null
           alt_phone: string | null
           created_at: string
           email: string | null
           full_name: string
           id: string
+          latitude: number | null
           license_number: string | null
+          location_updated_at: string | null
+          longitude: number | null
           phone: string
           status: string
           updated_at: string
@@ -54,12 +139,16 @@ export type Database = {
           ward_id: string | null
         }
         Insert: {
+          address?: string | null
           alt_phone?: string | null
           created_at?: string
           email?: string | null
           full_name: string
           id?: string
+          latitude?: number | null
           license_number?: string | null
+          location_updated_at?: string | null
+          longitude?: number | null
           phone: string
           status?: string
           updated_at?: string
@@ -68,12 +157,16 @@ export type Database = {
           ward_id?: string | null
         }
         Update: {
+          address?: string | null
           alt_phone?: string | null
           created_at?: string
           email?: string | null
           full_name?: string
           id?: string
+          latitude?: number | null
           license_number?: string | null
+          location_updated_at?: string | null
+          longitude?: number | null
           phone?: string
           status?: string
           updated_at?: string
@@ -338,6 +431,36 @@ export type Database = {
         }
         Relationships: []
       }
+      wallet_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          reference: string | null
+          staff_id: string
+          type: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference?: string | null
+          staff_id: string
+          type?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference?: string | null
+          staff_id?: string
+          type?: string
+        }
+        Relationships: []
+      }
       ward_connections: {
         Row: {
           created_at: string
@@ -425,6 +548,7 @@ export type Database = {
     Functions: {
       get_public_delivery_partners: { Args: never; Returns: Json }
       get_public_google_maps_key: { Args: never; Returns: string }
+      get_public_offline_mbtiles_meta: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
