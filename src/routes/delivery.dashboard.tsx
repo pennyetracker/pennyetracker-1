@@ -26,7 +26,7 @@ function DeliveryDashboard() {
     if (!roles.includes("delivery")) { navigate({ to: "/staff/pending" }); }
   }, [loading, user, isAdmin, roles, navigate]);
 
-  const { data: staff } = useQuery({
+  const { data: staff, isLoading: staffLoading } = useQuery({
     enabled: !!user,
     queryKey: ["my-staff", user?.id],
     queryFn: async () => {
@@ -163,8 +163,26 @@ function DeliveryDashboard() {
     qc.invalidateQueries({ queryKey: ["my-orders", staffId] });
   };
 
-  if (loading || !staff) {
+  if (loading || staffLoading) {
     return <main className="flex min-h-screen items-center justify-center text-muted-foreground">Loading…</main>;
+  }
+
+  if (!staff) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
+        <h1 className="text-xl font-semibold">No delivery profile found</h1>
+        <p className="max-w-md text-sm text-muted-foreground">
+          Your account ({user?.email ?? user?.phone}) has the delivery role but is not linked to a delivery_staff record yet.
+          Please ask an admin to create your staff profile, or sign up again via the staff signup form.
+        </p>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={async () => { await signOut(); navigate({ to: "/staff/login" }); }}>
+            <LogOut className="mr-2 h-4 w-4" />Sign out
+          </Button>
+          <Button onClick={() => navigate({ to: "/staff/signup" })}>Go to signup</Button>
+        </div>
+      </main>
+    );
   }
 
   const mapsUrl = staff.latitude && staff.longitude
