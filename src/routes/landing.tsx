@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Truck, MapPin, Navigation, MapPinned, Map as MapIcon } from "lucide-react";
+import { Truck, MapPin, Navigation, MapPinned, Map as MapIcon, LogOut } from "lucide-react";
 import logo from "@/assets/logo.png";
 
 export const Route = createFileRoute("/landing")({
@@ -54,7 +54,7 @@ const features = [
 ];
 
 function Landing() {
-  const { user, roles, loading, isAdmin } = useAuth();
+  const { user, roles, loading, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -64,7 +64,7 @@ function Landing() {
       return;
     }
     if (isAdmin) return;
-    if (roles.includes("delivery")) navigate({ to: "/delivery-partners" });
+    if (roles.includes("delivery")) navigate({ to: "/delivery/dashboard" });
     else navigate({ to: "/staff/pending" });
   }, [user, roles, loading, isAdmin, navigate]);
 
@@ -75,6 +75,11 @@ function Landing() {
       </main>
     );
   }
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate({ to: "/staff/login" });
+  };
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-[oklch(0.98_0.01_240)] via-background to-[oklch(0.95_0.03_250)]">
@@ -91,11 +96,9 @@ function Landing() {
             <Button variant="ghost" size="sm" asChild>
               <Link to="/delivery-partners">Partners</Link>
             </Button>
-            <Button size="sm" asChild>
-              <Link to="/staff/login">Staff Login</Link>
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/auth">Admin Login</Link>
+            <Button variant="destructive" size="sm" onClick={handleLogout}>
+              <LogOut className="mr-1.5 h-4 w-4" />
+              Logout
             </Button>
           </div>
         </div>
