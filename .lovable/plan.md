@@ -1,68 +1,51 @@
-## Goal
+## What's happening
 
-After staff login, route delivery staff to a new Delivery Partner Dashboard. Admin/super_admin behavior stays unchanged.
+There is no `index.html` because TanStack Start renders HTML on the server from `src/routes/__root.tsx`. That's correct, not the cause of slowness.
 
-## 1. Login routing fix (`src/routes/staff.login.tsx`)
+The real causes of the slow initial load are visible in the codebase + network log:
 
-Current code already routes admin → `/landing`, delivery → `/delivery-partners`, pending → `/staff/pending`. Change the `delivery` branch to navigate to the new `/delivery/dashboard` route instead of the public partners directory.
+1. **Duplicate auth/role fetches** — `src/hooks/use-auth.tsx` calls `loadRoles` from BOTH `onAuthStateChange` (which fires `INITIAL_SESSION` immediately) AND `supabase.auth.getSession().then(...)`. The network log shows 3 identical `/user_roles` requests on a single load. Every page is blocked behind `loading=true` until these finish.
+2. **Heavy libraries bundled too eagerly** — `leaflet`, `react-leaflet`, `sql.js` (WASM SQLite for mbtiles), `recharts`, `@xyflow/react` are imported statically by route files. Even visiting `/staff/login` pulls them.
+3. **Landing/index does redirect-only work** but waits for auth roles before rendering anything — adds a perceived blank-screen delay.
+4. **Router preload** is using defaults — preloads on hover pull large chunks unnecessarily.
 
-No change for admin/super_admin.
+## Fix plan
 
-## 2. New route: `/delivery/dashboard`
+### 1. Auth hook — single fetch, no double load (`src/hooks/use-auth.tsx`)
+- Remove the manual `supabase.auth.getSession().then(...)` block; rely solely on `onAuthStateChange`, which fires `INITIAL_SESSION` on mount with the restored session.
+- Cache last-fetched `user.id` and skip `loadRoles` if it's the same user (prevents re-fetch on `TOKEN_REFRESHED` events).
+- Wrap roles in TanStack Query (`['user_roles', userId]`) so repeated subscribers dedupe automatically.
 
-File: `src/routes/delivery.dashboard.tsx` (protected — redirect to `/staff/login` if not signed in or not a `delivery` role).
+### 2. Lazy-load map stack
+- Convert `src/components/map/LeafletMap.tsx`, `OfflineMap.tsx`, `MapPicker.tsx` consumers to use `React.lazy(() => import(...))` + `<Suspense>` inside route components.
+- Routes affected: `map.panchayath.tsx`, `update-location.*`, `marking.*`, `admin.settings.tsx`, `admin.locations.tsx`.
+- Keep `leaflet` CSS import only inside those lazy chunks (not at top of route files).
 
-Loads the current user's `delivery_staff` row (by `user_id`) and renders the dashboard.
+### 3. Lazy-load other heavy libs where used
+- `recharts` (admin dashboards) → dynamic import.
+- `@xyflow/react` (mapping editor) → already isolated to `admin.mapping.*`; verify it's not pulled by `__root` or `landing`.
+- `sql.js` (mbtiles) → only inside the offline-map component, dynamic import + WASM URL.
 
-### Dashboard sections
+### 4. Landing page — don't block on roles
+- In `src/routes/index.tsx` and `src/routes/landing.tsx`, render the visible shell immediately. Run the role-based redirect inside `useEffect` once `loading=false`, instead of returning a "Checking authentication…" placeholder for the whole page.
 
-1. **Profile card**
-   - Name, phone, alt phone, email
-   - Assigned panchayath(s) — from `delivery_staff_panchayaths` join `panchayaths`
-   - Assigned ward(s) — from `delivery_staff_wards` join `wards` (name + ward_number)
-   - Address
-   - Location: lat/lng with "Update my location" button (uses browser geolocation → updates `delivery_staff.latitude/longitude/location_updated_at`)
-   - Small embedded Google Map showing the saved point (uses existing `useGoogleMapsKey` hook + `LeafletMap`/Google JS API already in project)
+### 5. Router + Query tuning (`src/router.tsx`)
+- Set `defaultPreloadStaleTime: 0` (Query owns freshness).
+- Set `defaultPreload: "intent"` (already default) but add `defaultPendingMinMs: 0` so transitions feel instant.
+- In `QueryClient`, set `staleTime: 30_000` and `gcTime: 5 * 60_000` defaults so auth/role data isn't re-fetched on every navigation.
 
-2. **Stats row (4 cards)**
-   - **Pending orders** — count from `delivery_orders` where `staff_id = me` AND `status = 'pending'`
-   - **Delivered orders** — count where `status = 'delivered'`
-   - **Collected cash** — sum of `amount` on delivered orders where `cash_submission_id IS NULL` (held by staff)
-   - **Wallet balance** — sum of `wallet_transactions.amount` (credit positive, debit negative) for this staff
+### 6. Drop unused work on cold start
+- Verify `__root.tsx` does not import map/chart/xyflow modules transitively (it currently imports only `AuthProvider` + `Toaster`, which is fine — confirm after changes).
+- Add `loading="lazy"` and explicit `width`/`height` to images in landing/delivery-partners pages to reduce CLS.
 
-3. **Submitted cash card**
-   - Total of `cash_submissions.amount` for this staff
-   - Recent 5 submissions list (date, amount, verified status)
+## Technical notes
 
-4. **Pending orders list**
-   - Table: order_number, customer_name, phone, address, amount, "Mark delivered" button
-   - Mark delivered → update row `status='delivered'`, `delivered_at=now()` (allowed by existing "Staff update own orders" RLS)
+- The duplicate `user_roles` calls in the network log are the smoking gun for the auth fix. After dedupe, that section should issue exactly **one** request per session.
+- Lazy-loading Leaflet alone typically removes ~150 KB gzipped from the initial bundle; lazy-loading `sql.js` removes the WASM blob (~600 KB) from any non-map route.
+- No DB schema or business-logic changes. Pure frontend/perf work.
 
-5. **Delivered orders list (recent 10)**
-   - order_number, customer, amount, delivered_at, cash submitted? badge
+## Out of scope (ask if you want these too)
 
-### Sign out button in header.
-
-## 3. Data access
-
-All reads/writes go through the browser Supabase client. Existing RLS already supports:
-- staff self-select on `delivery_staff`, `delivery_staff_wards`, `delivery_staff_panchayaths`
-- staff select/update on own `delivery_orders`
-- staff select on own `cash_submissions` and `wallet_transactions`
-
-No DB migration needed.
-
-## 4. Guard
-
-Use `useAuth()` from `src/hooks/use-auth.tsx`: if `loading` show spinner; if no user → redirect `/staff/login`; if user but roles include `admin`/`super_admin` → redirect `/landing`; if roles include `delivery` → render; if only `pending` → redirect `/staff/pending`.
-
-## Files touched
-
-- `src/routes/staff.login.tsx` — change one navigate target
-- `src/routes/delivery.dashboard.tsx` — new
-- (optional) small helpers in `src/lib/` for queries — kept inline for now
-
-## Out of scope
-
-- No changes to admin flows, landing page, or `/delivery-partners` directory page
-- No new tables, no schema changes
+- Adding a service worker for offline caching.
+- Replacing Leaflet with a lighter map.
+- Moving role checks to SSR via `createServerFn`.
