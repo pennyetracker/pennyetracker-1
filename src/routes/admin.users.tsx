@@ -120,56 +120,77 @@ function UsersPage() {
         </Card>
       )}
 
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>Phone / Email</TableHead>
-              <TableHead>Roles</TableHead>
-              {isSuperAdmin && <TableHead>Actions</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {profiles.length === 0 && (
-              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">No users yet.</TableCell></TableRow>
-            )}
-            {profiles.map((p) => (
-              <TableRow key={p.id}>
-                <TableCell className="font-medium">{p.full_name ?? "—"}</TableCell>
-                <TableCell className="text-muted-foreground">{p.phone ?? p.email ?? "—"}</TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {p.roles.length === 0 && <span className="text-xs text-muted-foreground">none</span>}
-                    {p.roles.map((r) => (
-                      <Badge key={r} variant={r === "super_admin" ? "default" : "secondary"}>{r}</Badge>
-                    ))}
-                  </div>
-                </TableCell>
-                {isSuperAdmin && (
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {ROLES.map((r) => {
-                        const has = p.roles.includes(r);
-                        return (
-                          <Button
-                            key={r}
-                            size="sm"
-                            variant={has ? "default" : "outline"}
-                            onClick={() => toggle.mutate({ userId: p.id, role: r, has })}
-                          >
-                            {has ? "−" : "+"} {r}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  </TableCell>
+      {(() => {
+        const admins = profiles.filter((p) => p.roles.includes("admin") || p.roles.includes("super_admin"));
+        const delivery = profiles.filter((p) => p.roles.includes("delivery") && !p.roles.includes("admin") && !p.roles.includes("super_admin"));
+        const others = profiles.filter((p) => p.roles.length === 0);
+
+        const renderTable = (rows: typeof profiles) => (
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Phone / Email</TableHead>
+                  <TableHead>Roles</TableHead>
+                  {isSuperAdmin && <TableHead>Actions</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.length === 0 && (
+                  <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">No users.</TableCell></TableRow>
                 )}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+                {rows.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium">{p.full_name ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{p.phone ?? p.email ?? "—"}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {p.roles.length === 0 && <span className="text-xs text-muted-foreground">none</span>}
+                        {p.roles.map((r) => (
+                          <Badge key={r} variant={r === "super_admin" ? "default" : "secondary"}>{r}</Badge>
+                        ))}
+                      </div>
+                    </TableCell>
+                    {isSuperAdmin && (
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {ROLES.map((r) => {
+                            const has = p.roles.includes(r);
+                            return (
+                              <Button
+                                key={r}
+                                size="sm"
+                                variant={has ? "default" : "outline"}
+                                onClick={() => toggle.mutate({ userId: p.id, role: r, has })}
+                              >
+                                {has ? "−" : "+"} {r}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        );
+
+        return (
+          <Tabs defaultValue="admins">
+            <TabsList>
+              <TabsTrigger value="admins">Admins ({admins.length})</TabsTrigger>
+              <TabsTrigger value="delivery">Delivery Staff ({delivery.length})</TabsTrigger>
+              <TabsTrigger value="other">No role ({others.length})</TabsTrigger>
+            </TabsList>
+            <TabsContent value="admins">{renderTable(admins)}</TabsContent>
+            <TabsContent value="delivery">{renderTable(delivery)}</TabsContent>
+            <TabsContent value="other">{renderTable(others)}</TabsContent>
+          </Tabs>
+        );
+      })()}
     </div>
   );
 }
