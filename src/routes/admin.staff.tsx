@@ -34,7 +34,6 @@ function StaffPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Staff | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [activeTab, setActiveTab] = useState("delivery");
 
   type PendingStaff = { id: string; full_name: string; phone: string; created_at: string; panchayaths: string[]; wards: string[] };
   const callApproval = async (body: any) => {
@@ -99,8 +98,9 @@ function StaffPage() {
   });
 
   const staff = staffData ?? [];
-  const deliveryStaff = staff.filter((s) => s.roles.includes("delivery") || s.roles.length === 0);
-  const adminStaff = staff.filter((s) => s.roles.includes("admin") || s.roles.includes("super_admin"));
+  const deliveryStaff = staff.filter(
+    (s) => !(s.roles?.includes("admin") || s.roles?.includes("super_admin")),
+  );
 
   const { data: panchayaths = [] } = useQuery({
     queryKey: ["panchayaths-flat"],
@@ -259,18 +259,7 @@ function StaffPage() {
         </Card>
       )}
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
-        <TabsList>
-          <TabsTrigger value="delivery">Delivery Staff ({deliveryStaff.length})</TabsTrigger>
-          <TabsTrigger value="admin">Admins ({adminStaff.length})</TabsTrigger>
-        </TabsList>
-        <TabsContent value="delivery" className="mt-4">
-          {renderStaffList(deliveryStaff)}
-        </TabsContent>
-        <TabsContent value="admin" className="mt-4">
-          {renderStaffList(adminStaff)}
-        </TabsContent>
-      </Tabs>
+      <div className="mt-6">{renderStaffList(deliveryStaff)}</div>
     </div>
   );
 }
