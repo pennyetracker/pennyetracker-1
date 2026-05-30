@@ -12,6 +12,8 @@ import {
   DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { testExternalSite } from "@/lib/external-sites.functions";
 import { Save, ExternalLink, Upload, Trash2, MapIcon, Plus, Globe, Pencil, Check, X } from "lucide-react";
 import { GOOGLE_MAPS_KEY_NAME, useGoogleMapsKey } from "@/hooks/use-google-maps-key";
 import { useQuery } from "@tanstack/react-query";
@@ -444,17 +446,15 @@ function ExternalSitesCard() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const runTest = useServerFn(testExternalSite);
   const testKey = async (s: ExternalSite) => {
     setTestingId(s.id);
-    const url = s.test_endpoint_url || s.website_url;
-    const headerName = s.auth_header_name || "Authorization";
-    const headerValue = (s.auth_header_prefix || "") + s.api_key;
     try {
-      const res = await fetch(url, { method: "GET", headers: { [headerName]: headerValue } });
-      if (res.ok) toast.success(`OK — ${res.status} ${res.statusText}`);
-      else toast.error(`Failed — ${res.status} ${res.statusText}`);
+      const r = await runTest({ data: { siteId: s.id } });
+      if (r.ok) toast.success(`OK — ${r.status} ${r.statusText}`);
+      else toast.error(`Failed — ${r.status} ${r.statusText}`);
     } catch (e: any) {
-      toast.error("Network/CORS error — key not verifiable from browser");
+      toast.error(e?.message ?? "Test failed");
     } finally {
       setTestingId(null);
     }
