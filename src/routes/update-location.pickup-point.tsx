@@ -352,12 +352,18 @@ function UpdatePickupPointLocation() {
                     {selectedId ? "Edit pickup point" : "Add pickup point"}
                   </p>
                   <Input
-                    placeholder="Name *"
+                    placeholder="Pickup point name *"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                   />
                   <Input
-                    placeholder="Phone"
+                    placeholder="Custodian name"
+                    value={form.custodian}
+                    onChange={(e) => setForm({ ...form, custodian: e.target.value })}
+                  />
+                  <Input
+                    placeholder="Mobile number"
+                    inputMode="tel"
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
                   />
