@@ -334,6 +334,7 @@ function NavigatePlaces({ ready }: { ready: boolean }) {
           </span>
         )}
       </div>
+      <OverlayLegend pickupCount={pickups.length} staffCount={staff.length} />
       <Card className="overflow-hidden">
         <CardContent className="p-0">
           <div ref={mapDiv} className="h-[60vh] w-full" />
