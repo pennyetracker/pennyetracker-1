@@ -174,6 +174,7 @@ function UpdatePickupPointLocation() {
       const { error } = await (supabase as any).from("pickup_points").insert({
         panchayath_id: panchayathId,
         name: form.name.trim(),
+        custodian: form.custodian.trim() || null,
         address: form.address.trim() || null,
         phone: form.phone.trim() || null,
       });
@@ -182,7 +183,7 @@ function UpdatePickupPointLocation() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pickup-points", panchayathId] });
       toast.success("Pickup point added");
-      setForm({ name: "", address: "", phone: "" });
+      setForm({ name: "", custodian: "", address: "", phone: "" });
     },
     onError: (e: any) => toast.error(e.message),
   });
