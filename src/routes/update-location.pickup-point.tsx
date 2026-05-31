@@ -193,6 +193,7 @@ function UpdatePickupPointLocation() {
       if (!selectedId) throw new Error("Select a pickup point");
       const patch: any = {
         name: form.name.trim(),
+        custodian: form.custodian.trim() || null,
         address: form.address.trim() || null,
         phone: form.phone.trim() || null,
       };
