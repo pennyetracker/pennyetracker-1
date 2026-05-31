@@ -81,10 +81,10 @@ function UpdatePickupPointLocation() {
   // load form when selection changes
   useEffect(() => {
     if (selected) {
-      setForm({ name: selected.name, address: selected.address ?? "", phone: selected.phone ?? "" });
+      setForm({ name: selected.name, custodian: selected.custodian ?? "", address: selected.address ?? "", phone: selected.phone ?? "" });
       setDraft(null);
     } else {
-      setForm({ name: "", address: "", phone: "" });
+      setForm({ name: "", custodian: "", address: "", phone: "" });
     }
   }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
