@@ -21,6 +21,7 @@ type PickupPoint = {
   id: string;
   panchayath_id: string;
   name: string;
+  custodian: string | null;
   address: string | null;
   phone: string | null;
   latitude: number | null;
@@ -36,7 +37,7 @@ function UpdatePickupPointLocation() {
   const [panchayathId, setPanchayathId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ lat: number; lng: number } | null>(null);
-  const [form, setForm] = useState({ name: "", address: "", phone: "" });
+  const [form, setForm] = useState({ name: "", custodian: "", address: "", phone: "" });
 
   const { data: districts = [] } = useQuery({
     queryKey: ["districts"],
@@ -67,7 +68,7 @@ function UpdatePickupPointLocation() {
     queryFn: async (): Promise<PickupPoint[]> => {
       const { data, error } = await (supabase as any)
         .from("pickup_points")
-        .select("id, panchayath_id, name, address, phone, latitude, longitude")
+        .select("id, panchayath_id, name, custodian, address, phone, latitude, longitude")
         .eq("panchayath_id", panchayathId!)
         .order("name");
       if (error) throw error;
@@ -80,10 +81,10 @@ function UpdatePickupPointLocation() {
   // load form when selection changes
   useEffect(() => {
     if (selected) {
-      setForm({ name: selected.name, address: selected.address ?? "", phone: selected.phone ?? "" });
+      setForm({ name: selected.name, custodian: selected.custodian ?? "", address: selected.address ?? "", phone: selected.phone ?? "" });
       setDraft(null);
     } else {
-      setForm({ name: "", address: "", phone: "" });
+      setForm({ name: "", custodian: "", address: "", phone: "" });
     }
   }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -173,6 +174,7 @@ function UpdatePickupPointLocation() {
       const { error } = await (supabase as any).from("pickup_points").insert({
         panchayath_id: panchayathId,
         name: form.name.trim(),
+        custodian: form.custodian.trim() || null,
         address: form.address.trim() || null,
         phone: form.phone.trim() || null,
       });
@@ -181,7 +183,7 @@ function UpdatePickupPointLocation() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pickup-points", panchayathId] });
       toast.success("Pickup point added");
-      setForm({ name: "", address: "", phone: "" });
+      setForm({ name: "", custodian: "", address: "", phone: "" });
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -191,6 +193,7 @@ function UpdatePickupPointLocation() {
       if (!selectedId) throw new Error("Select a pickup point");
       const patch: any = {
         name: form.name.trim(),
+        custodian: form.custodian.trim() || null,
         address: form.address.trim() || null,
         phone: form.phone.trim() || null,
       };
@@ -349,12 +352,18 @@ function UpdatePickupPointLocation() {
                     {selectedId ? "Edit pickup point" : "Add pickup point"}
                   </p>
                   <Input
-                    placeholder="Name *"
+                    placeholder="Pickup point name *"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                   />
                   <Input
-                    placeholder="Phone"
+                    placeholder="Custodian name"
+                    value={form.custodian}
+                    onChange={(e) => setForm({ ...form, custodian: e.target.value })}
+                  />
+                  <Input
+                    placeholder="Mobile number"
+                    inputMode="tel"
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
                   />
