@@ -18,6 +18,117 @@ export const Route = createFileRoute("/location-tracking")({
 
 const DEFAULT_CENTER = { lat: 10.85, lng: 76.27 };
 
+type AreaPoint = { id: string; name: string; lat: number; lng: number; subtitle?: string | null };
+
+/** Fetches pickup points and active delivery staff that have a pinned location. */
+function useAreaOverlays() {
+  const pickups = useQuery({
+    queryKey: ["overlay", "pickup_points"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pickup_points")
+        .select("id, name, address, latitude, longitude")
+        .not("latitude", "is", null)
+        .not("longitude", "is", null);
+      if (error) throw error;
+      return (data ?? []).map((p: any) => ({
+        id: p.id, name: p.name, lat: p.latitude, lng: p.longitude, subtitle: p.address,
+      })) as AreaPoint[];
+    },
+    staleTime: 60_000,
+  });
+  const staff = useQuery({
+    queryKey: ["overlay", "delivery_staff"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("delivery_staff")
+        .select("id, full_name, phone, latitude, longitude, status")
+        .eq("status", "active")
+        .not("latitude", "is", null)
+        .not("longitude", "is", null);
+      if (error) throw error;
+      return (data ?? []).map((s: any) => ({
+        id: s.id, name: s.full_name, lat: s.latitude, lng: s.longitude, subtitle: s.phone,
+      })) as AreaPoint[];
+    },
+    staleTime: 60_000,
+  });
+  return { pickups: pickups.data ?? [], staff: staff.data ?? [] };
+}
+
+/** Renders pickup-point and delivery-staff markers on the supplied Google map.
+ *  Optional bounds filter restricts what's shown (used by Manual Route to
+ *  show only points "between" A and B). */
+function useOverlayMarkers(
+  mapRef: React.MutableRefObject<any>,
+  ready: boolean,
+  bounds?: { sw: { lat: number; lng: number }; ne: { lat: number; lng: number } } | null,
+) {
+  const { pickups, staff } = useAreaOverlays();
+  const markersRef = useRef<any[]>([]);
+
+  useEffect(() => {
+    if (!ready || !mapRef.current) return;
+    const g = (window as any).google;
+    markersRef.current.forEach((m) => m.setMap(null));
+    markersRef.current = [];
+
+    const inBounds = (p: AreaPoint) => {
+      if (!bounds) return true;
+      return p.lat >= bounds.sw.lat && p.lat <= bounds.ne.lat
+        && p.lng >= bounds.sw.lng && p.lng <= bounds.ne.lng;
+    };
+
+    const mkIcon = (fill: string, stroke: string) => ({
+      path: g.maps.SymbolPath.CIRCLE,
+      scale: 7,
+      fillColor: fill,
+      fillOpacity: 0.95,
+      strokeColor: stroke,
+      strokeWeight: 2,
+    });
+
+    const info = new g.maps.InfoWindow();
+    const add = (p: AreaPoint, kind: "pickup" | "staff") => {
+      const m = new g.maps.Marker({
+        map: mapRef.current,
+        position: { lat: p.lat, lng: p.lng },
+        title: p.name,
+        icon: kind === "pickup"
+          ? mkIcon("#f59e0b", "#92400e")
+          : mkIcon("#10b981", "#065f46"),
+        zIndex: kind === "pickup" ? 50 : 60,
+      });
+      m.addListener("click", () => {
+        info.setContent(
+          `<div style="font:500 13px system-ui">${kind === "pickup" ? "📦 Pickup" : "🛵 Delivery"} · ${p.name}</div>` +
+          (p.subtitle ? `<div style="font:400 11px system-ui;color:#666;margin-top:2px">${p.subtitle}</div>` : ""),
+        );
+        info.open({ anchor: m, map: mapRef.current });
+      });
+      markersRef.current.push(m);
+    };
+
+    pickups.filter(inBounds).forEach((p) => add(p, "pickup"));
+    staff.filter(inBounds).forEach((p) => add(p, "staff"));
+  }, [ready, pickups, staff, bounds, mapRef]);
+}
+
+function OverlayLegend({ pickupCount, staffCount }: { pickupCount: number; staffCount: number }) {
+  return (
+    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+      <span className="inline-flex items-center gap-1.5">
+        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: "#f59e0b", boxShadow: "0 0 0 2px #92400e inset" }} />
+        Pickup points ({pickupCount})
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: "#10b981", boxShadow: "0 0 0 2px #065f46 inset" }} />
+        Delivery staff ({staffCount})
+      </span>
+    </div>
+  );
+}
+
 function LocationTracking() {
   const apiKey = useGoogleMapsKey();
   const mapState = useGoogleMaps(apiKey);
@@ -98,12 +209,16 @@ function SearchPlaces({ ready }: { ready: boolean }) {
     return () => g.maps.event.removeListener(listener);
   }, [ready]);
 
+  useOverlayMarkers(mapRef, ready);
+  const { pickups, staff } = useAreaOverlays();
+
   return (
     <div className="space-y-3">
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input ref={inputRef} placeholder="Search a place, address, landmark…" className="pl-9" disabled={!ready} />
       </div>
+      <OverlayLegend pickupCount={pickups.length} staffCount={staff.length} />
       <Card className="overflow-hidden">
         <CardContent className="p-0">
           <div ref={mapDiv} className="h-[65vh] w-full" />
@@ -179,6 +294,9 @@ function NavigatePlaces({ ready }: { ready: boolean }) {
     );
   };
 
+  useOverlayMarkers(mapRef, ready);
+  const { pickups, staff } = useAreaOverlays();
+
   return (
     <div className="space-y-3">
       <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
@@ -216,6 +334,7 @@ function NavigatePlaces({ ready }: { ready: boolean }) {
           </span>
         )}
       </div>
+      <OverlayLegend pickupCount={pickups.length} staffCount={staff.length} />
       <Card className="overflow-hidden">
         <CardContent className="p-0">
           <div ref={mapDiv} className="h-[60vh] w-full" />
@@ -318,6 +437,26 @@ function ManualRoute({ ready }: { ready: boolean }) {
     return (m / 1000).toFixed(2);
   }, [from, to, ready]);
 
+  // When both endpoints are set, only show overlay points within their bounding
+  // box (plus padding) so the user sees only what's "between" A and B.
+  const overlayBounds = useMemo(() => {
+    if (!from || !to) return null;
+    const pad = 0.02;
+    return {
+      sw: { lat: Math.min(from.lat, to.lat) - pad, lng: Math.min(from.lng, to.lng) - pad },
+      ne: { lat: Math.max(from.lat, to.lat) + pad, lng: Math.max(from.lng, to.lng) + pad },
+    };
+  }, [from, to]);
+
+  useOverlayMarkers(mapRef, ready, overlayBounds);
+  const { pickups, staff } = useAreaOverlays();
+  const visiblePickups = overlayBounds
+    ? pickups.filter((p) => p.lat >= overlayBounds.sw.lat && p.lat <= overlayBounds.ne.lat && p.lng >= overlayBounds.sw.lng && p.lng <= overlayBounds.ne.lng)
+    : pickups;
+  const visibleStaff = overlayBounds
+    ? staff.filter((s) => s.lat >= overlayBounds.sw.lat && s.lat <= overlayBounds.ne.lat && s.lng >= overlayBounds.sw.lng && s.lng <= overlayBounds.ne.lng)
+    : staff;
+
   return (
     <div className="space-y-3">
       <div className="grid gap-3 md:grid-cols-2">
@@ -357,6 +496,13 @@ function ManualRoute({ ready }: { ready: boolean }) {
           {distanceKm && <span className="ml-2 font-medium text-foreground">· straight-line {distanceKm} km</span>}
         </div>
       )}
+
+      <div className="flex items-center justify-between gap-3">
+        <OverlayLegend pickupCount={visiblePickups.length} staffCount={visibleStaff.length} />
+        {overlayBounds && (
+          <span className="text-xs text-muted-foreground">Showing points between A and B</span>
+        )}
+      </div>
 
       <Card className="overflow-hidden">
         <CardContent className="p-0">
