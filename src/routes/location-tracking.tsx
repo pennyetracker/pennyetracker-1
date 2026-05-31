@@ -294,6 +294,9 @@ function NavigatePlaces({ ready }: { ready: boolean }) {
     );
   };
 
+  useOverlayMarkers(mapRef, ready);
+  const { pickups, staff } = useAreaOverlays();
+
   return (
     <div className="space-y-3">
       <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
