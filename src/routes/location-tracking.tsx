@@ -437,6 +437,26 @@ function ManualRoute({ ready }: { ready: boolean }) {
     return (m / 1000).toFixed(2);
   }, [from, to, ready]);
 
+  // When both endpoints are set, only show overlay points within their bounding
+  // box (plus padding) so the user sees only what's "between" A and B.
+  const overlayBounds = useMemo(() => {
+    if (!from || !to) return null;
+    const pad = 0.02;
+    return {
+      sw: { lat: Math.min(from.lat, to.lat) - pad, lng: Math.min(from.lng, to.lng) - pad },
+      ne: { lat: Math.max(from.lat, to.lat) + pad, lng: Math.max(from.lng, to.lng) + pad },
+    };
+  }, [from, to]);
+
+  useOverlayMarkers(mapRef, ready, overlayBounds);
+  const { pickups, staff } = useAreaOverlays();
+  const visiblePickups = overlayBounds
+    ? pickups.filter((p) => p.lat >= overlayBounds.sw.lat && p.lat <= overlayBounds.ne.lat && p.lng >= overlayBounds.sw.lng && p.lng <= overlayBounds.ne.lng)
+    : pickups;
+  const visibleStaff = overlayBounds
+    ? staff.filter((s) => s.lat >= overlayBounds.sw.lat && s.lat <= overlayBounds.ne.lat && s.lng >= overlayBounds.sw.lng && s.lng <= overlayBounds.ne.lng)
+    : staff;
+
   return (
     <div className="space-y-3">
       <div className="grid gap-3 md:grid-cols-2">
