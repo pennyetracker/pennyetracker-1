@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Bike, MapPin, User, Phone, Home, ChevronDown } from "lucide-react";
+import { Bike, MapPin, User, Phone, Home, ChevronDown, UserPlus, Building2, Navigation } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -15,12 +15,21 @@ export const Route = createFileRoute("/delivery-partners")({
 });
 
 type PartnerWard = { name: string; ward_number: string | null };
+type PartnerAssignment = {
+  panchayath_id: string;
+  panchayath_name: string;
+  wards: PartnerWard[];
+};
 type Partner = {
   id: string;
   full_name: string;
   phone: string;
   alt_phone: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  location_updated_at: string | null;
   wards: PartnerWard[];
+  assignments: PartnerAssignment[];
 };
 type PanchayathGroup = {
   panchayath_id: string;
@@ -69,16 +78,43 @@ function PartnerCard({ partner, colors }: { partner: Partner; colors: ColorSet }
               <span>{partner.alt_phone}</span>
             </a>
           )}
-          {partner.wards.length > 0 && (
-            <div className="mt-1.5 flex items-start gap-2 text-sm">
-              <Home className={`mt-0.5 h-4 w-4 shrink-0 ${colors.icon}`} />
-              <div>
-                <span className="text-muted-foreground">Wards: </span>
-                <span className="font-medium">
-                  {partner.wards.map((w) => w.ward_number ?? w.name).join(", ")}
-                </span>
+          {partner.assignments.length > 0 && (
+            <div className="mt-2 space-y-1.5">
+              <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <Building2 className={`h-3.5 w-3.5 ${colors.icon}`} />
+                Allocated panchayaths
               </div>
+              {partner.assignments.map((a) => (
+                <div key={a.panchayath_id} className="rounded-md bg-white px-2 py-1.5 ring-1 ring-black/5">
+                  <div className="text-sm font-medium">{a.panchayath_name}</div>
+                  {a.wards.length > 0 && (
+                    <div className="mt-0.5 flex items-start gap-1.5 text-xs">
+                      <Home className={`mt-0.5 h-3 w-3 shrink-0 ${colors.icon}`} />
+                      <span>
+                        <span className="text-muted-foreground">Wards: </span>
+                        <span className="font-medium">
+                          {a.wards.map((w) => w.ward_number ?? w.name).join(", ")}
+                        </span>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
+          )}
+          {partner.latitude != null && partner.longitude != null && (
+            <a
+              href={`https://www.google.com/maps?q=${partner.latitude},${partner.longitude}`}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 flex items-center gap-2 text-sm hover:underline"
+            >
+              <Navigation className={`h-4 w-4 ${colors.icon}`} />
+              <span className="font-medium">Pinned location</span>
+              <span className="text-muted-foreground">
+                ({partner.latitude.toFixed(5)}, {partner.longitude.toFixed(5)})
+              </span>
+            </a>
           )}
         </div>
       )}
@@ -99,11 +135,20 @@ function DeliveryPartnersPage() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 pb-12">
       <div className="mx-auto max-w-3xl px-4 pt-6">
-        <div className="flex items-center gap-3 rounded-xl bg-[oklch(0.25_0.08_260)] px-5 py-4 text-white shadow-md">
-          <div className="rounded-lg bg-white/15 p-2">
-            <Bike className="h-6 w-6" />
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-[oklch(0.25_0.08_260)] px-5 py-4 text-white shadow-md">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="rounded-lg bg-white/15 p-2">
+              <Bike className="h-6 w-6" />
+            </div>
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl truncate">Delivery Staff Directory</h1>
           </div>
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Delivery Staff Directory</h1>
+          <Link
+            to="/staff/signup"
+            className="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-[oklch(0.25_0.08_260)] shadow hover:bg-white/90"
+          >
+            <UserPlus className="h-4 w-4" />
+            <span className="hidden sm:inline">Sign up</span>
+          </Link>
         </div>
 
         {isLoading && <p className="mt-8 text-center text-muted-foreground">Loading…</p>}
