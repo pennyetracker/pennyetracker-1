@@ -68,7 +68,7 @@ function UpdatePickupPointLocation() {
     queryFn: async (): Promise<PickupPoint[]> => {
       const { data, error } = await (supabase as any)
         .from("pickup_points")
-        .select("id, panchayath_id, name, address, phone, latitude, longitude")
+        .select("id, panchayath_id, name, custodian, address, phone, latitude, longitude")
         .eq("panchayath_id", panchayathId!)
         .order("name");
       if (error) throw error;
