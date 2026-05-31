@@ -408,6 +408,7 @@ export type Database = {
         Row: {
           address: string | null
           created_at: string
+          custodian: string | null
           id: string
           latitude: number | null
           location_updated_at: string | null
@@ -420,6 +421,7 @@ export type Database = {
         Insert: {
           address?: string | null
           created_at?: string
+          custodian?: string | null
           id?: string
           latitude?: number | null
           location_updated_at?: string | null
@@ -432,6 +434,7 @@ export type Database = {
         Update: {
           address?: string | null
           created_at?: string
+          custodian?: string | null
           id?: string
           latitude?: number | null
           location_updated_at?: string | null

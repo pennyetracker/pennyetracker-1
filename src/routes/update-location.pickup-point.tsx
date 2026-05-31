@@ -21,6 +21,7 @@ type PickupPoint = {
   id: string;
   panchayath_id: string;
   name: string;
+  custodian: string | null;
   address: string | null;
   phone: string | null;
   latitude: number | null;
