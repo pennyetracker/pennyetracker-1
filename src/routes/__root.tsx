@@ -75,7 +75,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "pennyetracker App" },
-      { name: "description", content: "its a pennyekarts Project" },
+      { name: "description", content: "its a pennyekart Project" },
       { name: "author", content: "pennyetracker" },
       { property: "og:title", content: "pennyetracker App" },
       { property: "og:description", content: "it a pennyekart Project" },
