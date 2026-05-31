@@ -497,6 +497,13 @@ function ManualRoute({ ready }: { ready: boolean }) {
         </div>
       )}
 
+      <div className="flex items-center justify-between gap-3">
+        <OverlayLegend pickupCount={visiblePickups.length} staffCount={visibleStaff.length} />
+        {overlayBounds && (
+          <span className="text-xs text-muted-foreground">Showing points between A and B</span>
+        )}
+      </div>
+
       <Card className="overflow-hidden">
         <CardContent className="p-0">
           <div ref={mapDiv} className="h-[55vh] w-full" />
