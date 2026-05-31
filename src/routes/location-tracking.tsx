@@ -209,12 +209,16 @@ function SearchPlaces({ ready }: { ready: boolean }) {
     return () => g.maps.event.removeListener(listener);
   }, [ready]);
 
+  useOverlayMarkers(mapRef, ready);
+  const { pickups, staff } = useAreaOverlays();
+
   return (
     <div className="space-y-3">
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input ref={inputRef} placeholder="Search a place, address, landmark…" className="pl-9" disabled={!ready} />
       </div>
+      <OverlayLegend pickupCount={pickups.length} staffCount={staff.length} />
       <Card className="overflow-hidden">
         <CardContent className="p-0">
           <div ref={mapDiv} className="h-[65vh] w-full" />
