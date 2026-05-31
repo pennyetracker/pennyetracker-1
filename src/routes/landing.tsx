@@ -30,7 +30,7 @@ const features = [
   {
     icon: MapPin,
     title: "Location Tracking",
-    to: null,
+    to: "/location-tracking" as const,
     gradient: "from-[oklch(0.65_0.2_30)] via-[oklch(0.7_0.2_50)] to-[oklch(0.75_0.18_80)]",
   },
   {

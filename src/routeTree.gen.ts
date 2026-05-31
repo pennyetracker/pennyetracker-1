@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LocationTrackingRouteImport } from './routes/location-tracking'
 import { Route as LandingRouteImport } from './routes/landing'
 import { Route as DeliveryPartnersRouteImport } from './routes/delivery-partners'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -37,6 +38,11 @@ import { Route as AdminMappingIndexRouteImport } from './routes/admin.mapping.in
 import { Route as AdminMappingWardRouteImport } from './routes/admin.mapping.ward'
 import { Route as AdminMappingPanchayathRouteImport } from './routes/admin.mapping.panchayath'
 
+const LocationTrackingRoute = LocationTrackingRouteImport.update({
+  id: '/location-tracking',
+  path: '/location-tracking',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LandingRoute = LandingRouteImport.update({
   id: '/landing',
   path: '/landing',
@@ -180,6 +186,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/delivery-partners': typeof DeliveryPartnersRoute
   '/landing': typeof LandingRoute
+  '/location-tracking': typeof LocationTrackingRoute
   '/admin/admins': typeof AdminAdminsRoute
   '/admin/locations': typeof AdminLocationsRoute
   '/admin/mapping': typeof AdminMappingRouteWithChildren
@@ -208,6 +215,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/delivery-partners': typeof DeliveryPartnersRoute
   '/landing': typeof LandingRoute
+  '/location-tracking': typeof LocationTrackingRoute
   '/admin/admins': typeof AdminAdminsRoute
   '/admin/locations': typeof AdminLocationsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -237,6 +245,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/delivery-partners': typeof DeliveryPartnersRoute
   '/landing': typeof LandingRoute
+  '/location-tracking': typeof LocationTrackingRoute
   '/admin/admins': typeof AdminAdminsRoute
   '/admin/locations': typeof AdminLocationsRoute
   '/admin/mapping': typeof AdminMappingRouteWithChildren
@@ -268,6 +277,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/delivery-partners'
     | '/landing'
+    | '/location-tracking'
     | '/admin/admins'
     | '/admin/locations'
     | '/admin/mapping'
@@ -296,6 +306,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/delivery-partners'
     | '/landing'
+    | '/location-tracking'
     | '/admin/admins'
     | '/admin/locations'
     | '/admin/settings'
@@ -324,6 +335,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/delivery-partners'
     | '/landing'
+    | '/location-tracking'
     | '/admin/admins'
     | '/admin/locations'
     | '/admin/mapping'
@@ -354,6 +366,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   DeliveryPartnersRoute: typeof DeliveryPartnersRoute
   LandingRoute: typeof LandingRoute
+  LocationTrackingRoute: typeof LocationTrackingRoute
   DeliveryDashboardRoute: typeof DeliveryDashboardRoute
   MapPanchayathRoute: typeof MapPanchayathRoute
   MarkingPanchayathRoute: typeof MarkingPanchayathRoute
@@ -370,6 +383,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/location-tracking': {
+      id: '/location-tracking'
+      path: '/location-tracking'
+      fullPath: '/location-tracking'
+      preLoaderRoute: typeof LocationTrackingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/landing': {
       id: '/landing'
       path: '/landing'
@@ -606,6 +626,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   DeliveryPartnersRoute: DeliveryPartnersRoute,
   LandingRoute: LandingRoute,
+  LocationTrackingRoute: LocationTrackingRoute,
   DeliveryDashboardRoute: DeliveryDashboardRoute,
   MapPanchayathRoute: MapPanchayathRoute,
   MarkingPanchayathRoute: MarkingPanchayathRoute,

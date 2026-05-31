@@ -41,7 +41,7 @@ function loadScript(apiKey: string): Promise<void> {
     s.id = "google-maps-js";
     s.async = true;
     s.defer = true;
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=marker`;
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=marker,places,geometry`;
     s.onload = () => done(true);
     s.onerror = () => done(false);
     document.head.appendChild(s);
