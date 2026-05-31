@@ -37,7 +37,7 @@ function UpdatePickupPointLocation() {
   const [panchayathId, setPanchayathId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ lat: number; lng: number } | null>(null);
-  const [form, setForm] = useState({ name: "", address: "", phone: "" });
+  const [form, setForm] = useState({ name: "", custodian: "", address: "", phone: "" });
 
   const { data: districts = [] } = useQuery({
     queryKey: ["districts"],
